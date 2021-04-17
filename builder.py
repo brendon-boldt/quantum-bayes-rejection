@@ -1,20 +1,9 @@
-from typing import Dict, List, Tuple
-
 from qiskit import QuantumCircuit  # type: ignore
 from qiskit.visualization import *  # type: ignore
 from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
 import numpy as np  # type: ignore
 
-Node = Dict[Tuple[int, ...], float]
-Network = List[Node]
-
-# This is assumed to be topologically sorted
-net: Network = [
-    {(): 0.25},
-    {(): 0.25},
-    {(0, 1): 0.5, (0,): 0.25, (): 1},
-    {(0, 1, 2): 0.5},
-]
+from network import Network
 
 
 def prob_to_ang(p: float) -> float:
