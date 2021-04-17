@@ -5,7 +5,7 @@ import qiskit as qk  # type: ignore
 from qiskit.visualization import *  # type: ignore
 import numpy as np
 
-from .network import Network
+from .network import Network, powerset, get_parents
 
 
 def prob_to_ang(p: float) -> float:
@@ -22,7 +22,9 @@ def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
 
     # The first n bits are the ones we want to sample
     for i, node in enumerate(net):
-        for parents, prob in node.items():
+        all_parents = get_parents(node)
+        for parents in powerset(all_parents):
+            prob = node.get(parents, 0.0)
             angle = prob_to_ang(prob)
             # We need to undo the rotations of subconditions; e.g., (0, 2) will
             # need to undo the rotations performed by (0,), (2,), and () since
@@ -30,6 +32,8 @@ def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
             for m, q in node.items():
                 if set(m) < set(parents):
                     angle -= prob_to_ang(q)
+            if angle == 0.0:
+                continue
             if len(parents) == 0:
                 circ.rx(angle, qreg[i])
             else:
@@ -44,7 +48,7 @@ def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
 def simulate_network(net: Network, pdf: bool = False) -> Mapping[int, float]:
     circuit = make_prep_circuit(net)
     backend = qk.Aer.get_backend("aer_simulator")
-    shots = 1 << 13
+    shots = 1 << 14
     result = qk.execute(circuit, backend, shots=shots).result()
     to_pdf = lambda v: v / shots if pdf else v
     counts = {int(k, 2): to_pdf(v) for k, v in result.get_counts().items()}

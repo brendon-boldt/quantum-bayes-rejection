@@ -1,26 +1,35 @@
-from typing import Dict, List, Tuple, Any, Mapping
+from typing import Dict, List, Tuple, Mapping, Iterable, TypeVar, Iterator
 from collections import defaultdict
+from itertools import combinations, chain
+
+_T = TypeVar("_T")
 
 Node = Dict[Tuple[int, ...], float]
 Network = List[Node]
 
 
-def powerset(n: int) -> Any:
-    for i in range(1 << n):
-        yield tuple(j for j in range(n) if (1 << j) & i)
+def powerset(iterable: Iterable[_T]) -> Iterator[Tuple[_T, ...]]:
+    elems = list(iterable)
+    return chain.from_iterable(combinations(elems, l) for l in range(len(elems) + 1))
+
+
+def get_parents(node: Node) -> Tuple[int, ...]:
+    return tuple(set(x for k in node.keys() for x in k))
 
 
 def get_joint_dist(net: Network) -> Mapping[int, float]:
     result = defaultdict(lambda: 0.0)
-    parentss = [set(x for k in node.keys() for x in k) for node in net]
-    for idx, target in enumerate(powerset(len(net))):
+    for target in powerset(range(len(net))):
         joint_prob = 1.0
-        for node_idx, parents in enumerate(parentss):
+        for node_idx in range(len(net)):
+            parents = get_parents(net[node_idx])
             filtered_tgt = tuple(x for x in target if x in parents)
             prob_true = net[node_idx].get(filtered_tgt, 0.0)
+            # If the current node is 0 in the joint dist we are calculating, we
+            # need to convert p(n=1) to p(n=0).
             prob = prob_true if node_idx in target else 1 - prob_true
             joint_prob *= prob
-        result[idx] = joint_prob
+        result[sum(2 ** int(x) for x in list(target))] = joint_prob
     return result
 
 

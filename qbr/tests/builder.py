@@ -3,7 +3,6 @@
 import unittest
 from typing import List, Tuple
 
-import numpy as np
 from scipy import stats  # type: ignore
 
 from .. import network
