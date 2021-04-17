@@ -1,5 +1,5 @@
-from typing import Dict, List, Tuple, Any
-from functools import reduce
+from typing import Dict, List, Tuple, Any, Mapping
+from collections import defaultdict
 
 Node = Dict[Tuple[int, ...], float]
 Network = List[Node]
@@ -10,20 +10,17 @@ def powerset(n: int) -> Any:
         yield tuple(j for j in range(n) if (1 << j) & i)
 
 
-def get_joint_dist(net: Network) -> List[float]:
-    result = []
+def get_joint_dist(net: Network) -> Mapping[int, float]:
+    result = defaultdict(lambda: 0.0)
     parentss = [set(x for k in node.keys() for x in k) for node in net]
-    for target in powerset(len(net)):
+    for idx, target in enumerate(powerset(len(net))):
         joint_prob = 1.0
-        print(target)
         for node_idx, parents in enumerate(parentss):
             filtered_tgt = tuple(x for x in target if x in parents)
             prob_true = net[node_idx].get(filtered_tgt, 0.0)
             prob = prob_true if node_idx in target else 1 - prob_true
-            print(prob)
             joint_prob *= prob
-        result.append(joint_prob)
-        print()
+        result[idx] = joint_prob
     return result
 
 
@@ -40,6 +37,6 @@ simple_network: Network = [
 
 if __name__ == "__main__":
     probs = get_joint_dist(simple_network)
-    for i, p in enumerate(probs):
-        print(f"{i:4b} {p:.3f}")
-    print(sum(probs))
+    for k, v in probs.items():
+        print(f"{k:04b} {v:.3f}")
+    print(sum(probs.values()))

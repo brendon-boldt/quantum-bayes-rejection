@@ -1,6 +1,8 @@
-from qiskit import QuantumCircuit  # type: ignore
+from collections import defaultdict
+from typing import Mapping
+
+import qiskit as qk  # type: ignore
 from qiskit.visualization import *  # type: ignore
-from qiskit import QuantumRegister, ClassicalRegister, QuantumCircuit
 import numpy as np  # type: ignore
 
 from network import Network
@@ -11,10 +13,10 @@ def prob_to_ang(p: float) -> float:
     return np.arcsin(np.sqrt(p)) * 2
 
 
-def make_prep_circuit(net: Network) -> QuantumCircuit:
-    qreg = QuantumRegister(len(net), "q")
-    creg = ClassicalRegister(len(net), "c")
-    circ = QuantumCircuit(qreg, creg)
+def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
+    qreg = qk.QuantumRegister(len(net), "q")
+    creg = qk.ClassicalRegister(len(net), "c")
+    circ = qk.QuantumCircuit(qreg, creg)
 
     circ.reset(qreg)
 
@@ -37,3 +39,12 @@ def make_prep_circuit(net: Network) -> QuantumCircuit:
     for i in range(len(net)):
         circ.measure(qreg[i], creg[i])
     return circ
+
+
+def simulate_network(net: Network) -> Mapping[int, float]:
+    circuit = make_prep_circuit(net)
+    backend = qk.Aer.get_backend("qasm_simulator")
+    shots = 1 << 13
+    result = qk.execute(circuit, backend, shots=shots).result()
+    counts = {int(k, 2): v / shots for k, v in result.get_counts().items()}
+    return defaultdict(lambda: 0.0, counts)
