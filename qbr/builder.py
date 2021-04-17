@@ -3,9 +3,9 @@ from typing import Mapping
 
 import qiskit as qk  # type: ignore
 from qiskit.visualization import *  # type: ignore
-import numpy as np  # type: ignore
+import numpy as np
 
-from network import Network
+from .network import Network
 
 
 def prob_to_ang(p: float) -> float:
@@ -41,10 +41,11 @@ def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
     return circ
 
 
-def simulate_network(net: Network) -> Mapping[int, float]:
+def simulate_network(net: Network, pdf: bool = False) -> Mapping[int, float]:
     circuit = make_prep_circuit(net)
-    backend = qk.Aer.get_backend("qasm_simulator")
+    backend = qk.Aer.get_backend("aer_simulator")
     shots = 1 << 13
     result = qk.execute(circuit, backend, shots=shots).result()
-    counts = {int(k, 2): v / shots for k, v in result.get_counts().items()}
+    to_pdf = lambda v: v / shots if pdf else v
+    counts = {int(k, 2): to_pdf(v) for k, v in result.get_counts().items()}
     return defaultdict(lambda: 0.0, counts)

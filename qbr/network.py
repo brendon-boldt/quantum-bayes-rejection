@@ -34,9 +34,3 @@ simple_network: Network = [
     {(0, 1): 0.5, (0,): 0.25, (): 1},
     {(0, 1, 2): 0.5},
 ]
-
-if __name__ == "__main__":
-    probs = get_joint_dist(simple_network)
-    for k, v in probs.items():
-        print(f"{k:04b} {v:.3f}")
-    print(sum(probs.values()))
