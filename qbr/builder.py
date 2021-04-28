@@ -51,7 +51,13 @@ def phase_flip(n_qubits: int, evidence: str) -> qk.circuit.Gate:
     for i in range(k):
         if evidence[i] == "0":
             circ.x(qreg[i])
-    circ.mcp(np.pi, qreg[: k - 1], qreg[k - 1])
+    evidence_bits = [
+        b for i, b in enumerate(qreg) if i < len(evidence) and evidence[i] in "01"
+    ]
+    if len(evidence_bits) == 1:
+        circ.p(np.pi, evidence_bits[0])
+    elif len(evidence_bits) > 1:
+        circ.mcp(np.pi, evidence_bits[:-1], evidence_bits[-1])
     for i in range(k):
         if evidence[i] == "0":
             circ.x(qreg[i])
@@ -72,6 +78,15 @@ def amplification(n_qubits: int) -> qk.circuit.Gate:
 
 
 def make_circuit(net: Network, evidence: str, n_grover_iters: int) -> qk.QuantumCircuit:
+    """Make circuit for condition rejection sampling.
+
+    Arguments
+    ---------
+    evidence: str
+        String of evidence bits; "-" refers to an unset bit; e.g., "1-0"
+        conditions on x_2=1 and x_0=0
+
+    """
     qreg = qk.QuantumRegister(len(net), "q")
     creg = qk.ClassicalRegister(len(net), "c")
     circ = qk.QuantumCircuit(qreg, creg)
