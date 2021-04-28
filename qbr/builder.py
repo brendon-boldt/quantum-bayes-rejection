@@ -13,12 +13,9 @@ def prob_to_ang(p: float) -> float:
     return np.arcsin(np.sqrt(p)) * 2
 
 
-def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
+def q_sample_prep(net: Network, inv: bool = False) -> qk.circuit.Gate:
     qreg = qk.QuantumRegister(len(net), "q")
-    creg = qk.ClassicalRegister(len(net), "c")
-    circ = qk.QuantumCircuit(qreg, creg)
-
-    circ.reset(qreg)
+    circ = qk.QuantumCircuit(qreg)
 
     # The first n bits are the ones we want to sample
     for i, node in enumerate(net):
@@ -35,18 +32,69 @@ def make_prep_circuit(net: Network) -> qk.QuantumCircuit:
             if angle == 0.0:
                 continue
             if len(parents) == 0:
-                circ.rx(angle, qreg[i])
+                circ.ry(angle, qreg[i])
             else:
-                # TODO These might need to be mrcz, not mcry
-                # circ.mcrx(angle, [qreg[idx] for idx in parents], qreg[i])
                 circ.mcry(angle, [qreg[idx] for idx in parents], qreg[i])
+    gate = circ.to_gate()
+    if inv:
+        gate = gate.inverse()
+        gate.name = "$A_p^\dagger$"
+    else:
+        gate.name = "$A_p$"
+    return gate
+
+
+def phase_flip(n_qubits: int, evidence: str) -> qk.circuit.Gate:
+    qreg = qk.QuantumRegister(n_qubits, "q")
+    circ = qk.QuantumCircuit(qreg)
+    k = len(evidence)
+    for i in range(k):
+        if evidence[i] == "0":
+            circ.x(qreg[i])
+    circ.mcp(np.pi, qreg[: k - 1], qreg[k - 1])
+    for i in range(k):
+        if evidence[i] == "0":
+            circ.x(qreg[i])
+    gate = circ.to_gate()
+    gate.name = "PF"
+    return gate
+
+
+def amplification(n_qubits: int) -> qk.circuit.Gate:
+    qreg = qk.QuantumRegister(n_qubits, "q")
+    circ = qk.QuantumCircuit(qreg)
+    circ.x(qreg)
+    circ.mcp(np.pi, qreg[:-1], qreg[-1])
+    circ.x(qreg)
+    gate = circ.to_gate()
+    gate.name = "AA"
+    return gate
+
+
+def make_circuit(net: Network, evidence: str, n_grover_iters: int) -> qk.QuantumCircuit:
+    qreg = qk.QuantumRegister(len(net), "q")
+    creg = qk.ClassicalRegister(len(net), "c")
+    circ = qk.QuantumCircuit(qreg, creg)
+
+    circ.reset(qreg)
+
+    circ.append(q_sample_prep(net), qreg)
+    for i in range(n_grover_iters):
+        circ.append(phase_flip(len(net), evidence), qreg)
+        circ.append(q_sample_prep(net, inv=True), qreg)
+        circ.append(amplification(len(net)), qreg)
+        circ.append(q_sample_prep(net), qreg)
+
     for i in range(len(net)):
-        circ.measure(qreg[i], creg[i])
+        circ.measure(i, i)
+
     return circ
 
 
-def simulate_network(net: Network, pdf: bool = False) -> Mapping[int, float]:
-    circuit = make_prep_circuit(net)
+def simulate_network(
+    net: Network, evidence: str, n_grover_iters: int, pdf: bool = False
+) -> Mapping[int, float]:
+    circuit = make_circuit(net, evidence, n_grover_iters)
     backend = qk.Aer.get_backend("aer_simulator")
     shots = 1 << 14
     result = qk.execute(circuit, backend, shots=shots).result()

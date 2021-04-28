@@ -27,7 +27,7 @@ def failures_to_string(fs: List[Tuple[int, float, float, float]]) -> str:
 
 class CircuitJoinDist(unittest.TestCase):
     def test_simple(self) -> None:
-        res_sim = builder.simulate_network(simple_network)
+        res_sim = builder.simulate_network(simple_network, "", 0)
         res_calc = network.get_joint_dist(simple_network)
         shots = sum(res_sim.values())
         failures = []
