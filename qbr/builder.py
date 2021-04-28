@@ -47,19 +47,18 @@ def q_sample_prep(net: Network, inv: bool = False) -> qk.circuit.Gate:
 def phase_flip(n_qubits: int, evidence: str) -> qk.circuit.Gate:
     qreg = qk.QuantumRegister(n_qubits, "q")
     circ = qk.QuantumCircuit(qreg)
-    k = len(evidence)
-    for i in range(k):
-        if evidence[i] == "0":
+    # The evidence is indexed backwards, so we have to reverse it.
+    r_ev = list(reversed(evidence))
+    for i in range(len(r_ev)):
+        if r_ev[i] == "0":
             circ.x(qreg[i])
-    evidence_bits = [
-        b for i, b in enumerate(qreg) if i < len(evidence) and evidence[i] in "01"
-    ]
+    evidence_bits = [b for i, b in enumerate(qreg) if i < len(r_ev) and r_ev[i] in "01"]
     if len(evidence_bits) == 1:
         circ.p(np.pi, evidence_bits[0])
     elif len(evidence_bits) > 1:
         circ.mcp(np.pi, evidence_bits[:-1], evidence_bits[-1])
-    for i in range(k):
-        if evidence[i] == "0":
+    for i in range(len(r_ev)):
+        if r_ev[i] == "0":
             circ.x(qreg[i])
     gate = circ.to_gate()
     gate.name = "PF"
