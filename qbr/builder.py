@@ -5,7 +5,7 @@ import qiskit as qk  # type: ignore
 from qiskit.visualization import *  # type: ignore
 import numpy as np
 
-from .network import Network, powerset, get_parents
+from .network import Network, powerset
 
 
 def prob_to_ang(p: float) -> float:
@@ -19,17 +19,19 @@ def q_sample_prep(net: Network, inv: bool = False) -> qk.circuit.Gate:
 
     # The first n bits are the ones we want to sample
     for i, node in enumerate(net):
-        all_parents = get_parents(node)
+        all_parents = node[0]
         for parents in powerset(all_parents):
-            prob = node.get(parents, 0.0)
+            parents_idx = sum(1 << i for i, x in enumerate(all_parents) if x in parents)
+            prob = node[1][parents_idx]
             angle = prob_to_ang(prob)
             # We need to undo the rotations of subconditions; e.g., (0, 2) will
             # need to undo the rotations performed by (0,), (2,), and () since
             # those will also be applied if 0 and 2 are true.
-            for m, q in node.items():
-                if set(m) < set(parents):
+            for j, q in enumerate(node[1]):
+                # if j is a subset of parents
+                if (j & parents_idx) == j and not j == parents_idx:
                     angle -= prob_to_ang(q)
-            if angle == 0.0:
+            if np.fmod(angle, 2 * np.pi) == 0.0:
                 continue
             if len(parents) == 0:
                 circ.ry(angle, qreg[i])
