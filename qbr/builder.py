@@ -37,6 +37,26 @@ def q_sample_prep(net: Network, inv: bool = False) -> qk.circuit.Gate:
                 circ.ry(angle, qreg[i])
             else:
                 circ.mcry(angle, [qreg[idx] for idx in parents], qreg[i])
+
+    # Phase correction code
+    # Using RY with entangled qubits can cause the phase to become pi whereas
+    # we want all phases to be 0 in anticipation of phase flip and
+    # amplification. Oddly, the incorrect phases do not appear to affect the
+    # algorithm
+    tol = 1e-6
+    backend = qk.Aer.get_backend("statevector_simulator")
+    statevector = qk.execute(circ, backend).result().results[0].data.statevector
+    for idx, state in enumerate(statevector):
+        # If a state has a phase of pi, flip it to 0
+        if state < -tol:
+            for i in range(len(net)):
+                if (~idx) & (1 << i):
+                    circ.x(i)
+            circ.mcp(np.pi, qreg[:-1], qreg[-1])
+            for i in range(len(net)):
+                if (~idx) & (1 << i):
+                    circ.x(i)
+
     gate = circ.to_gate()
     if inv:
         gate = gate.inverse()
