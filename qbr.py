@@ -173,7 +173,9 @@ def simulate_network(
 
 
 def simulate_network_statevector(
-    net: Network, evidence: str, n_grover_iters: int, pdf: bool = False
+    net: Network,
+    evidence: str,
+    n_grover_iters: int,
 ) -> Any:
     circuit = make_circuit(net, evidence, n_grover_iters, measure=False)
     backend = qk.Aer.get_backend("statevector_simulator")
@@ -184,9 +186,20 @@ def simulate_network_statevector(
 
 # Sample networks
 
-# The nodes should be topologically sorted, and the node indices should be
-# sorted.
+# The nodes should be topologically sorted
 test_networks: Mapping[str, Network] = {
+    # A network in the shape of an "X" with the following edges:
+    #     0->2, 1->2, 2->3, 2->4
+    "X_0": [
+        # No parents, so we only have a prior probability
+        ((), (0.25,)),
+        ((), (0.5,)),
+        # 2 parents -> 4 probabilities for (x0=0, x1=1), (x0=1, x1=0),
+        # (x0=0, x1=1), and (x0=1, x1=1)
+        ((0, 1), (0.2, 0.4, 0.6, 0.8)),
+        ((2,), (0.25, 0.75)),
+        ((2,), (0, 1)),
+    ],
     "0": [
         ((), (0.25,)),
     ],
