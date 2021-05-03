@@ -11,15 +11,15 @@ from .. import builder
 THRESHOLD = 0.01
 
 
-def failures_to_string(fs: List[Tuple[int, float, float, float]]) -> str:
-    res = "Bad probabilities (key, exact, simulation, significance):"
+def failures_to_string(name: str, fs: List[Tuple[int, float, float, float]]) -> str:
+    res = f"{name}: Bad probabilities (key, exact, simulation, significance):"
     for k, calc, sim, sig in fs:
         res += f"\n\t{k:04b}  {calc:.3f} {sim:.3f} {sig:.3f}"
     return res
 
 
-class CircuitJoinDist(unittest.TestCase):
-    def _test_joint(self, net: network.Network) -> None:
+class CircuitJointDist(unittest.TestCase):
+    def _test_joint(self, name: str, net: network.Network) -> None:
         res_sim = builder.simulate_network(net, "", 0)
         res_calc = network.get_joint_dist(net)
         shots = sum(res_sim.values())
@@ -30,11 +30,9 @@ class CircuitJoinDist(unittest.TestCase):
             sig = stats.binom_test(sim, shots, calc)
             if sig < THRESHOLD:
                 failures.append((k, calc, sim / shots, sig))
-        explanation = failures_to_string(failures)
+        explanation = failures_to_string(name, failures)
         self.assertTrue(len(failures) == 0, explanation)
 
-    def test_simple_joint(self) -> None:
-        self._test_joint(network.simple_network)
-
-    def test_paper_joint(self) -> None:
-        self._test_joint(network.paper_network)
+    def test_joint(self) -> None:
+        for name, net in network.test_networks.items():
+            self._test_joint(name, net)
